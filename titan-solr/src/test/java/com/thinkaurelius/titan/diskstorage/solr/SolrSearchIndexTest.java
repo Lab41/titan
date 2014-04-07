@@ -1,18 +1,22 @@
 package com.thinkaurelius.titan.diskstorage.solr;
 
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableSet;
+import com.thinkaurelius.titan.StorageSetup;
 import com.thinkaurelius.titan.core.attribute.Geo;
 import com.thinkaurelius.titan.core.attribute.Geoshape;
 import com.thinkaurelius.titan.diskstorage.StorageException;
 import com.thinkaurelius.titan.diskstorage.indexing.IndexProvider;
 import com.thinkaurelius.titan.diskstorage.indexing.IndexProviderTest;
 import com.thinkaurelius.titan.diskstorage.indexing.IndexQuery;
+import com.thinkaurelius.titan.graphdb.configuration.GraphDatabaseConfiguration;
 import com.thinkaurelius.titan.graphdb.query.condition.PredicateCondition;
 
 
 import org.apache.commons.configuration.BaseConfiguration;
 import org.apache.commons.configuration.Configuration;
 
+import java.io.File;
 import java.util.List;
 import java.util.Map;
 
@@ -40,15 +44,18 @@ public class SolrSearchIndexTest extends IndexProviderTest {
         Configuration config = new BaseConfiguration();
 
         //SOLR_MODE_HTTP
+        /*
         config.setProperty(SOLR_MODE, SOLR_MODE_HTTP);
         config.setProperty(SOLR_HTTP_URL, "http://localhost:8983/solr");
         config.setProperty(SOLR_HTTP_CONNECTION_TIMEOUT, 10000); //in milliseconds
+        */
 
         //SOLR_MODE_EMBEDDED
-//        config.setProperty(GraphDatabaseConfiguration.STORAGE_DIRECTORY_KEY, StorageSetup.getHomeDir("solr"));
-//        String home = "titan-solr/target/test-classes/solr/";
-//        config.setProperty(SOLR_HOME, home);
-       //SOLR CLOUD
+        config.setProperty(SOLR_MODE, SOLR_MODE_EMBEDDED);
+        config.setProperty(GraphDatabaseConfiguration.STORAGE_DIRECTORY_KEY, StorageSetup.getHomeDir("solr"));
+        config.setProperty(SOLR_HOME, Joiner.on(File.separator).join(System.getProperty("user.dir"), "titan-solr", "target", "test-classes", "solr"));
+
+        //SOLR CLOUD
 //        config.setProperty(SOLR_MODE, SOLR_MODE_CLOUD);
 //        config.setProperty(SOLR_CLOUD_ZOOKEEPER_URL, "localhost:2181");
 //        config.setProperty(SOLR_CLOUD_COLLECTION, "store");
