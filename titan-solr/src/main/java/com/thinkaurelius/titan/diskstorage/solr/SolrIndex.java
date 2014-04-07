@@ -353,7 +353,7 @@ public class SolrIndex implements IndexProvider {
 
 
     @Override
-    public List<String> query(IndexQuery query, KeyInformation.IndexRetriever informaations, TransactionHandle tx) throws StorageException {
+    public List<String> query(IndexQuery query, KeyInformation.IndexRetriever informations, TransactionHandle tx) throws StorageException {
         List<String> result = new ArrayList<String>();
         String core = query.getStore();
         String keyIdField = keyFieldIds.get(core);
@@ -384,7 +384,7 @@ public class SolrIndex implements IndexProvider {
             response = solr.query(solrQuery);
             log.debug("Executed query [{}] in {} ms", query.getCondition(), response.getElapsedTime());
             int totalHits = response.getResults().size();
-            if (false == query.hasLimit() && totalHits >= MAX_RESULT_SET_SIZE) {
+            if (!query.hasLimit() && totalHits >= MAX_RESULT_SET_SIZE) {
                 log.warn("Query result set truncated to first [{}] elements for query: {}", MAX_RESULT_SET_SIZE, query);
             }
             result = new ArrayList<String>(totalHits);
@@ -426,7 +426,7 @@ public class SolrIndex implements IndexProvider {
             response = solr.query(solrQuery);
             log.debug("Executed query [{}] in {} ms", query.getQuery(), response.getElapsedTime());
             int totalHits = response.getResults().size();
-            if (false == query.hasLimit() && totalHits >= MAX_RESULT_SET_SIZE) {
+            if (!query.hasLimit() && totalHits >= MAX_RESULT_SET_SIZE) {
                 log.warn("Query result set truncated to first [{}] elements for query: {}", MAX_RESULT_SET_SIZE, query);
             }
             result = new ArrayList<RawQuery.Result<String>>(totalHits);
@@ -449,7 +449,7 @@ public class SolrIndex implements IndexProvider {
 
     public SolrQuery buildQuery(SolrQuery q, Condition<?> condition) {
         if (condition instanceof PredicateCondition) {
-            PredicateCondition<String, ?> atom= (PredicateCondition<String, ?>) condition;
+            PredicateCondition<String, ?> atom = (PredicateCondition<String, ?>) condition;
             Object value = atom.getValue();
             String key = atom.getKey();
             TitanPredicate titanPredicate = atom.getPredicate();
