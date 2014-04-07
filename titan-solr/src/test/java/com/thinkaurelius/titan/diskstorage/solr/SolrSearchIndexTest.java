@@ -63,8 +63,6 @@ public class SolrSearchIndexTest extends IndexProviderTest {
     @Test
     public void storeWithBoundingBoxGeospatialSearch() throws StorageException
     {
-        this.openIndex().clearStorage();
-
         String[] stores = new String[] { "vertex" };
 
         Map<String,Object> doc1 = getDocument("Hello world",1001,5.2, Geoshape.point(48.0, 0.0));
