@@ -5,6 +5,7 @@ import com.google.common.collect.Sets;
 import com.spatial4j.core.exception.InvalidShapeException;
 import com.thinkaurelius.titan.core.Order;
 import com.thinkaurelius.titan.core.attribute.*;
+import com.thinkaurelius.titan.diskstorage.PermanentStorageException;
 import com.thinkaurelius.titan.diskstorage.StorageException;
 import com.thinkaurelius.titan.diskstorage.TemporaryStorageException;
 import com.thinkaurelius.titan.diskstorage.TransactionHandle;
@@ -122,23 +123,15 @@ public class SolrIndex implements IndexProvider {
      *  </p>
      * @param config Titan configuration passed in at start up time
      */
-    public SolrIndex(Configuration config) {
+    public SolrIndex(Configuration config) throws StorageException {
 
         SolrServerFactory factory = new SolrServerFactory();
         coreNames = SolrUtils.parseConfigForCoreNames(config);
 
-        try {
-            solrServers = factory.buildSolrServers(config);
-            detectAndSetEmbeddedMode(config);
-        } catch (Exception e) {
-            log.error("Unable to generate a Solr Server connection.", e);
-        }
+        solrServers = factory.buildSolrServers(config);
+        detectAndSetEmbeddedMode(config);
 
-        try {
-            keyFieldIds = parseKeyFieldsForCores(config);
-        } catch (Exception e) {
-            log.error(e.getMessage(), e);
-        }
+        keyFieldIds = parseKeyFieldsForCores(config);
 
         BATCH_SIZE =  config.getInt(SOLR_COMMIT_BATCH_SIZE, DEFAULT_BATCH_SIZE);
     }
@@ -150,7 +143,7 @@ public class SolrIndex implements IndexProvider {
         }
     }
 
-    private Map<String, String> parseKeyFieldsForCores(Configuration config) throws Exception {
+    private Map<String, String> parseKeyFieldsForCores(Configuration config) throws StorageException {
         Map<String, String> keyFieldNames = new HashMap<String, String>();
         List<String> coreFieldStatements = config.getList(SOLR_KEY_FIELD_NAMES);
         if (null == coreFieldStatements || coreFieldStatements.size() == 0) {
@@ -161,8 +154,8 @@ public class SolrIndex implements IndexProvider {
         } else {
             for (String coreFieldStatement : coreFieldStatements) {
                 String[] parts = coreFieldStatement.trim().split("=");
-                if (parts == null || parts.length == 0) {
-                    throw new Exception("Unable to parse the core name/ key field name pair. It should be of the format core=field");
+                if (parts.length != 2) {
+                    throw new PermanentStorageException("Unable to parse the core name/ key field name pair. It should be of the format core=field");
                 }
                 String coreName = parts[0];
                 String keyFieldName = parts[1];
@@ -340,6 +333,8 @@ public class SolrIndex implements IndexProvider {
                     log.error(name + ":" + d.getFieldValue(name).toString());
                 }
             }
+
+            throw rse;
         }
     }
 
@@ -399,8 +394,10 @@ public class SolrIndex implements IndexProvider {
 
         } catch (HttpSolrServer.RemoteSolrException e) {
             log.error("Query did not complete because parameters were not recognized : ", e);
+            throw new PermanentStorageException(e);
         } catch (SolrServerException e) {
             log.error("Unable to query Solr index.", e);
+            throw new PermanentStorageException(e);
         }
         return result;
     }
@@ -441,8 +438,10 @@ public class SolrIndex implements IndexProvider {
             }
         } catch (HttpSolrServer.RemoteSolrException e) {
             log.error("Query did not complete because parameters were not recognized : ", e);
+            throw new PermanentStorageException(e);
         } catch (SolrServerException e) {
             log.error("Unable to query Solr index.", e);
+            throw new PermanentStorageException(e);
         }
         return result;
     }
@@ -638,10 +637,13 @@ public class SolrIndex implements IndexProvider {
             }
         } catch (SolrServerException e) {
             log.error("Unable to clear storage from index due to server error on Solr.", e);
+            throw new PermanentStorageException(e);
         } catch (IOException e) {
             log.error("Unable to clear storage from index due to low-level I/O error.", e);
+            throw new PermanentStorageException(e);
         } catch (Exception e) {
             log.error("Unable to clear storage from index due to general error.", e);
+            throw new PermanentStorageException(e);
         }
     }
 
