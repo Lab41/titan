@@ -245,8 +245,8 @@ public class SolrIndex implements IndexProvider {
                             newDoc.addField(keyIdField, docId);
                             for (IndexEntry ie : additions) {
                                 Object fieldValue = ie.value;
-                                if (GeoToWktConverter.isGeoshape(ie.value))  {
-                                    fieldValue = GeoToWktConverter.convertToWktString(ie.value);
+                                if (fieldValue instanceof Geoshape) {
+                                    fieldValue = GeoToWktConverter.convertToWktString((Geoshape) fieldValue);
                                 }
                                 newDoc.addField(ie.key, fieldValue);
                             }
@@ -259,8 +259,8 @@ public class SolrIndex implements IndexProvider {
                             for (IndexEntry ie : additions) {
                                 Map<String, String> updateFields = new HashMap<String, String>();
                                 Object fieldValue = ie.value;
-                                if (GeoToWktConverter.isGeoshape(ie.value))  {
-                                    fieldValue = GeoToWktConverter.convertToWktString(ie.value);
+                                if (fieldValue instanceof Geoshape) {
+                                    fieldValue = GeoToWktConverter.convertToWktString((Geoshape) fieldValue);
                                 }
                                 updateFields.put("set", fieldValue.toString());
                                 updateDoc.addField(ie.key, updateFields);

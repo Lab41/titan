@@ -1,5 +1,7 @@
 package com.thinkaurelius.titan.diskstorage.solr.transform;
 
+import com.thinkaurelius.titan.core.attribute.Geoshape;
+import com.thinkaurelius.titan.diskstorage.PermanentStorageException;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -16,33 +18,23 @@ public class GeoToWktConverterTest {
      * format understood by Solr.
      */
     @Test
-    public void testConvertGeoshapePointToWktString() {
-        String p1 = "point[35.4,48.9]"; //no spaces, no negative values
-        String p2 = "point[35.4, 48.9]"; //spaces added
-        String p3 = "point[-35.4,48.9]"; //negative longitude value
-        String p4 = "point[35.4, -48.9]"; //negative latitude value
-
-        assertTrue(GeoToWktConverter.isTitanPoint(p1));
-        assertTrue(GeoToWktConverter.isTitanPoint(p2));
-        assertTrue(GeoToWktConverter.isTitanPoint(p3));
-        assertTrue(GeoToWktConverter.isTitanPoint(p4));
+    public void testConvertGeoshapePointToWktString() throws PermanentStorageException {
+        Geoshape p1 = Geoshape.point(35.4, 48.9); //no spaces, no negative values
+        Geoshape p2 = Geoshape.point(-35.4,48.9); //negative longitude value
+        Geoshape p3 = Geoshape.point(35.4, -48.9); //negative latitude value
 
         String wkt1 = "POINT(48.9 35.4)";
-        String actualWkt1 = GeoToWktConverter.convertToWktPoint(p1);
+        String actualWkt1 = GeoToWktConverter.convertToWktString(p1);
 
-        String wkt2 = "POINT(48.9 35.4)";
-        String actualWkt2 = GeoToWktConverter.convertToWktPoint(p2);
+        String wkt2 = "POINT(48.9 -35.4)";
+        String actualWkt2 = GeoToWktConverter.convertToWktString(p2);
 
-        String wkt3 = "POINT(48.9 -35.4)";
-        String actualWkt3 = GeoToWktConverter.convertToWktPoint(p3);
-
-        String wkt4 = "POINT(-48.9 35.4)";
-        String actualWkt4 = GeoToWktConverter.convertToWktPoint(p4);
+        String wkt3 = "POINT(-48.9 35.4)";
+        String actualWkt3 = GeoToWktConverter.convertToWktString(p3);
 
         assertEquals(wkt1, actualWkt1);
         assertEquals(wkt2, actualWkt2);
         assertEquals(wkt3, actualWkt3);
-        assertEquals(wkt4, actualWkt4);
 
     }
 }
