@@ -30,9 +30,6 @@ public class SolrServerFactory {
 
     private Logger log = LoggerFactory.getLogger(SolrServerFactory.class);
 
-
-
-
     public Map<String, SolrServer> buildSolrServers(Configuration config)
             throws IllegalArgumentException, SolrException {
         Map<String, SolrServer> solrServers;
@@ -73,8 +70,6 @@ public class SolrServerFactory {
         }
         return servers;
     }
-
-
 
     private void createCoreIfNotExists(String coreName, SolrServer server) {
 
@@ -125,7 +120,6 @@ public class SolrServerFactory {
             server.setDefaultCollection(config.getString(SOLR_CLOUD_COLLECTION, SOLR_CLOUD_DEFAULT_COLLECTION));
 
             List<String> coreNames = SolrUtils.parseConfigForCoreNames(config);
-
 
             for (String coreName : coreNames) {
                 //createCoreIfNotExists(coreName, server);
