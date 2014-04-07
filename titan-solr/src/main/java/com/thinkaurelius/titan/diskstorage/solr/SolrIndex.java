@@ -404,7 +404,7 @@ public class SolrIndex implements IndexProvider {
 
     @Override
     public Iterable<RawQuery.Result<String>> query(RawQuery query, KeyInformation.IndexRetriever informations, TransactionHandle tx) throws StorageException {
-        List<RawQuery.Result<String>> result = new ArrayList<RawQuery.Result<String>>();
+        List<RawQuery.Result<String>> result;
         String core = query.getStore();
         String keyIdField = keyFieldIds.get(core);
         SolrServer solr = this.solrServers.get(core);
