@@ -32,9 +32,18 @@
   persistent: Save changes made via the API to this file
   sharedLib: path to a lib directory that will be shared across all cores
 -->
-<solr persistent="false">
-  <cores adminPath="/admin/cores" defaultCoreName="collection1">
-    <core name="vertex" instanceDir="vertex" />
-    <core name="edge" instanceDir="edge" />
-  </cores>
+<solr>
+  <solrcloud>
+    <str name="host">${host:}</str>
+    <int name="hostPort">${jetty.port:8983}</int>
+    <str name="hostContext">${hostContext:solr}</str>
+    <int name="zkClientTimeout">${zkClientTimeout:30000}</int>
+    <bool name="genericCoreNodeNames">${genericCoreNodeNames:true}</bool>
+    <int name="leaderVoteWait">0</int>
+  </solrcloud>
+
+  <sharedHandlerFactory name="sharedHandlerFactory" class="HttpShardHandlerFactory">
+    <int name="socketTimeout">${socketTimeout:120000}</int>
+    <int name="connTimeout">${connTimeout:15000}</int>
+  </sharedHandlerFactory>
 </solr>
