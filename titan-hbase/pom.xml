@@ -3,16 +3,16 @@
     <parent>
         <groupId>com.thinkaurelius.titan</groupId>
         <artifactId>titan</artifactId>
-        <version>0.4.3</version>
+        <version>0.4.3-hadoop2-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>titan-hbase</artifactId>
     <name>Titan-HBase: Distributed Graph Database</name>
     <url>http://thinkaurelius.github.com/titan/</url>
     <properties>
-        <hbase.version>0.94.12</hbase.version>
-        <hadoop.version>1.0.4</hadoop.version>
-        <hadoop.artifact>hadoop-core</hadoop.artifact>
+        <hbase.version>0.96.1.1-hadoop2</hbase.version>
+        <hadoop.version>2.2.0</hadoop.version>
+        <hadoop.artifact>hadoop-client</hadoop.artifact>
         <titan.hbase.mvn.opts />
         <default.test.jvm.opts>-Xms256m -Xmx1280m -XX:+HeapDumpOnOutOfMemoryError -ea ${test.extra.jvm.opts}</default.test.jvm.opts>
         <mem.jvm.opts>-Xms256m -Xmx768m -ea -XX:+HeapDumpOnOutOfMemoryError ${test.extra.jvm.opts}</mem.jvm.opts>
@@ -38,10 +38,14 @@
         </dependency>
         <dependency>
             <groupId>org.apache.hbase</groupId>
-            <artifactId>hbase</artifactId>
-            <!-- Update the hadoop-core artifact version when you update this -->
+            <artifactId>hbase-server</artifactId>
+            <!-- Update the hadoop-client artifact version when you update this -->
             <version>${hbase.version}</version>
             <exclusions>
+                <exclusion>
+                    <groupId>io.netty</groupId>
+                    <artifactId>netty</artifactId>
+                </exclusion>
                 <exclusion>
                     <artifactId>avro</artifactId>
                     <groupId>org.apache.avro</groupId>
@@ -56,7 +60,7 @@
                 </exclusion>
                 <exclusion>
                     <groupId>org.apache.hadoop</groupId>
-                    <artifactId>hadoop-core</artifactId>
+                    <artifactId>hadoop-client</artifactId>
                 </exclusion>
                 <exclusion>
                     <groupId>org.apache.hadoop</groupId>
@@ -69,6 +73,10 @@
                 <exclusion>
                     <groupId>org.apache.hadoop</groupId>
                     <artifactId>hadoop-annotations</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.sun.jersey</groupId>
+                    <artifactId>jersey-grizzly2</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
