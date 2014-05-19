@@ -1,8 +1,10 @@
 package com.thinkaurelius.titan.diskstorage.cassandra.astyanax;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Supplier;
 import com.google.common.collect.ImmutableMap;
 import com.netflix.astyanax.*;
+import com.netflix.astyanax.connectionpool.Host;
 import com.netflix.astyanax.connectionpool.NodeDiscoveryType;
 import com.netflix.astyanax.connectionpool.RetryBackoffStrategy;
 import com.netflix.astyanax.connectionpool.exceptions.ConnectionException;
@@ -37,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.Constructor;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static com.thinkaurelius.titan.diskstorage.cassandra.CassandraTransaction.getTx;
@@ -97,6 +100,12 @@ public class AstyanaxStoreManager extends AbstractCassandraStoreManager {
      */
     public static final String NODE_DISCOVERY_TYPE_DEFAULT = "RING_DESCRIBE";
     public static final String NODE_DISCOVERY_TYPE_KEY = "node-discovery-type";
+
+    /**
+     * Astyanax specific host supplier useful only when discovery type set to DISCOVERY_SERVICE or TOKEN_AWARE.
+     * Excepts fully qualified class name which extends google.common.base.Supplier<List<Host>>.
+     */
+    public static final String ASTYANAX_HOST_SUPPLIER_KEY= "host-supplier";
 
     /**
      * Astyanax's connection pooler implementation. This must be one of the
@@ -490,11 +499,22 @@ public class AstyanaxStoreManager extends AbstractCassandraStoreManager {
             cpool.setAuthenticationCredentials(new SimpleAuthenticationCredentials(username, password));
         }
 
+        String hostSupplier = config.getString(ASTYANAX_HOST_SUPPLIER_KEY);
+        Supplier<List<Host>> supplier = null;
+        if (hostSupplier != null) {
+            try {
+                supplier = (Supplier<List<Host>>) Class.forName(hostSupplier).newInstance();
+            } catch (Exception e) {
+                log.warn("Problem with host supplier class " + hostSupplier + ", going to use default.", e);
+            }
+        }
+
         return new AstyanaxContext.Builder()
                         .forCluster(clusterName)
                         .forKeyspace(keySpaceName)
                         .withAstyanaxConfiguration(aconf)
                         .withConnectionPoolConfiguration(cpool)
+                        .withHostSupplier(supplier)
                         .withConnectionPoolMonitor(new CountingConnectionPoolMonitor());
     }
 
@@ -532,14 +552,14 @@ public class AstyanaxStoreManager extends AbstractCassandraStoreManager {
     }
 
     private static RetryBackoffStrategy getRetryBackoffStrategy(String desc) throws PermanentStorageException {
-
         if (null == desc)
             return null;
 
         String[] tokens = desc.split(",");
         String policyClassName = tokens[0];
         int argCount = tokens.length - 1;
-        Object[] args = new Object[argCount];
+        Integer[] args = new Integer[argCount];
+
         for (int i = 1; i < tokens.length; i++) {
             args[i - 1] = Integer.valueOf(tokens[i]);
         }
@@ -557,7 +577,7 @@ public class AstyanaxStoreManager extends AbstractCassandraStoreManager {
         String[] tokens = serializedRetryPolicy.split(",");
         String policyClassName = tokens[0];
         int argCount = tokens.length - 1;
-        Object[] args = new Object[argCount];
+        Integer[] args = new Integer[argCount];
         for (int i = 1; i < tokens.length; i++) {
             args[i - 1] = Integer.valueOf(tokens[i]);
         }
@@ -572,30 +592,32 @@ public class AstyanaxStoreManager extends AbstractCassandraStoreManager {
     }
 
     @SuppressWarnings("unchecked")
-    private static <V> V instantiate(String policyClassName,
-                                     Object[] args, String raw) throws Exception {
+    private static <V> V instantiate(String policyClassName, Integer[] args, String raw) throws Exception {
+        for (Constructor<?> con : Class.forName(policyClassName).getConstructors()) {
+            Class<?>[] parameterTypes = con.getParameterTypes();
 
-        Class<?> policyClass = Class.forName(policyClassName);
+            // match constructor by number of arguments first
+            if (args.length != parameterTypes.length)
+                continue;
 
-        for (Constructor<?> con : policyClass.getConstructors()) {
-            Class<?>[] parameterClasses = con.getParameterTypes();
-            if (args.length == parameterClasses.length) {
-                boolean allInts = true;
-                for (Class<?> pc : parameterClasses) {
-                    if (!pc.equals(int.class)) {
-                        allInts = false;
-                        break;
-                    }
-                }
-
-                if (!allInts) {
+            // check if the constructor parameter types are compatible with argument types (which are integer)
+            // note that we allow long.class arguments too because integer is cast to long by runtime.
+            boolean intsOrLongs = true;
+            for (Class<?> pc : parameterTypes) {
+                if (!pc.equals(int.class) && !pc.equals(long.class)) {
+                    intsOrLongs = false;
                     break;
                 }
+            }
 
+            // we found a constructor with required number of parameters but times didn't match, let's carry on
+            if (!intsOrLongs)
+                continue;
+
+            if (log.isDebugEnabled())
                 log.debug("About to instantiate class {} with {} arguments", con.toString(), args.length);
 
-                return (V) con.newInstance(args);
-            }
+            return (V) con.newInstance(args);
         }
 
         throw new Exception("Failed to identify a class matching the Astyanax Retry Policy config string \"" + raw + "\"");
@@ -609,7 +631,7 @@ public class AstyanaxStoreManager extends AbstractCassandraStoreManager {
             KeyspaceDefinition kdef = k.describeKeyspace();
 
             if (null == kdef) {
-                throw new PermanentStorageException("Keyspace " + kdef + " is undefined");
+                throw new PermanentStorageException("Keyspace " + k.getKeyspaceName() + " is undefined");
             }
 
             ColumnFamilyDefinition cfdef = kdef.getColumnFamily(cf);

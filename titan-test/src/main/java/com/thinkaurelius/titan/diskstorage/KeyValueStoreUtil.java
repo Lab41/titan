@@ -2,10 +2,13 @@ package com.thinkaurelius.titan.diskstorage;
 
 import com.thinkaurelius.titan.diskstorage.util.ByteBufferUtil;
 import com.thinkaurelius.titan.diskstorage.util.RecordIterator;
+import com.thinkaurelius.titan.graphdb.configuration.GraphDatabaseConfiguration;
 import com.thinkaurelius.titan.graphdb.database.serialize.DataOutput;
 import com.thinkaurelius.titan.graphdb.database.serialize.Serializer;
 import com.thinkaurelius.titan.graphdb.database.serialize.kryo.KryoSerializer;
 import com.thinkaurelius.titan.testutil.RandomGenerator;
+import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration.PropertiesConfiguration;
 import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,11 +18,22 @@ import java.util.Arrays;
 public class KeyValueStoreUtil {
 
     private static final Logger log = LoggerFactory.getLogger(KeyValueStoreUtil.class);
-    public static final Serializer serial = new KryoSerializer(true);
+    public static Serializer serial = new KryoSerializer();
     public static final long idOffset = 1000;
 
     public static final StaticBuffer MIN_KEY = ByteBufferUtil.getLongBuffer(0);
     public static final StaticBuffer MAX_KEY = ByteBufferUtil.getLongBuffer(-1);
+
+    public static void setUTF8Serializer() {
+        Configuration conf  = new PropertiesConfiguration();
+        conf.setProperty(GraphDatabaseConfiguration.STRING_COMPACT_SERIALIZE,true);
+        KeyValueStoreUtil.serial = new KryoSerializer(conf);
+    }
+
+    public static void setDefaultSerializer() {
+        KeyValueStoreUtil.serial = new KryoSerializer();
+    }
+
 
     public static String[] generateData(int numKeys) {
         String[] ret = new String[numKeys];

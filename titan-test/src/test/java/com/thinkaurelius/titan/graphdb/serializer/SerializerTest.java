@@ -3,6 +3,7 @@ package com.thinkaurelius.titan.graphdb.serializer;
 
 import com.thinkaurelius.titan.diskstorage.ReadBuffer;
 import com.thinkaurelius.titan.diskstorage.StaticBuffer;
+import com.thinkaurelius.titan.graphdb.configuration.GraphDatabaseConfiguration;
 import com.thinkaurelius.titan.graphdb.database.serialize.DataOutput;
 import com.thinkaurelius.titan.graphdb.database.serialize.Serializer;
 import com.thinkaurelius.titan.graphdb.database.serialize.attribute.DoubleSerializer;
@@ -10,6 +11,8 @@ import com.thinkaurelius.titan.graphdb.database.serialize.attribute.FloatSeriali
 import com.thinkaurelius.titan.graphdb.database.serialize.kryo.KryoSerializer;
 import com.thinkaurelius.titan.testutil.PerformanceTest;
 import com.thinkaurelius.titan.testutil.RandomGenerator;
+import org.apache.commons.configuration.Configuration;
+import org.apache.commons.configuration.PropertiesConfiguration;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -31,7 +34,9 @@ public class SerializerTest {
 
     @Before
     public void setUp() throws Exception {
-        serialize = new KryoSerializer(false);
+        Configuration conf = new PropertiesConfiguration();
+        conf.setProperty(GraphDatabaseConfiguration.ATTRIBUTE_ALLOW_ALL_SERIALIZABLE_KEY,false);
+        serialize = new KryoSerializer(conf);
         serialize.registerClass(TestEnum.class, RESERVED_ID_OFFSET + 1);
         serialize.registerClass(TestClass.class, RESERVED_ID_OFFSET + 2);
         serialize.registerClass(short[].class, RESERVED_ID_OFFSET + 3);
@@ -95,6 +100,7 @@ public class SerializerTest {
         }
     }
 
+
     @Test
     public void classSerialization() {
         DataOutput out = serialize.getDataOutput(128, true);
@@ -135,6 +141,38 @@ public class SerializerTest {
         }
         for (int i = 0; i < numThreads; i++) {
             threads[i].join();
+        }
+    }
+
+    @Test
+    public void testDecimalSerializers() {
+        float[] fvalues = { 1.031f, 0.031f, 0.333f, 3423424.771f};
+        FloatSerializer fs = new FloatSerializer();
+        for (float f : fvalues) {
+            fs.verifyAttribute(f);
+            assertEquals(f,FloatSerializer.convert(FloatSerializer.convert(f)),DoubleSerializer.EPSILON);
+        }
+        fvalues = new float[]{ 1e16f, -1e16f, FloatSerializer.MIN_VALUE*10, FloatSerializer.MAX_VALUE*10};
+        for (float f : fvalues) {
+            try {
+                fs.verifyAttribute(f);
+                fail();
+            } catch (IllegalArgumentException e) {}
+        }
+
+        double[] dvalues = { 0.12574, 2342332.12574, 35.123456, 24321.692953};
+        DoubleSerializer ds = new DoubleSerializer();
+        for (double d : dvalues) {
+            ds.verifyAttribute(d);
+            assertEquals(d,DoubleSerializer.convert(DoubleSerializer.convert(d)),DoubleSerializer.EPSILON);
+        }
+
+        dvalues = new double[]{ 1e13, -1e13, DoubleSerializer.MIN_VALUE*10, DoubleSerializer.MAX_VALUE*10};
+        for (double d : dvalues) {
+            try {
+                ds.verifyAttribute(d);
+                fail();
+            } catch (IllegalArgumentException e) {}
         }
     }
 
@@ -195,7 +233,7 @@ public class SerializerTest {
 
     @Test
     public void testObjectVerification() {
-        KryoSerializer s = new KryoSerializer(true);
+        KryoSerializer s = new KryoSerializer();
         DataOutput out = s.getDataOutput(128, true);
         Long l = Long.valueOf(128);
         out.writeClassAndObject(l);

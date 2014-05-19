@@ -7,7 +7,7 @@
     </parent>
     <groupId>com.thinkaurelius.titan</groupId>
     <artifactId>titan</artifactId>
-    <version>0.4.2-dendrite-hadoop2-SNAPSHOT</version>
+    <version>0.4.4-dendrite-hadoop2-SNAPSHOT</version>
     <packaging>pom</packaging>
     <prerequisites>
         <maven>2.2.1</maven>
@@ -55,16 +55,15 @@
         <connection>scm:git:git@github.com:thinkaurelius/titan.git</connection>
         <developerConnection>scm:git:git@github.com:thinkaurelius/titan.git</developerConnection>
         <url>git@github.com:thinkaurelius/titan.git</url>
-        <tag>0.4.2</tag>
+        <tag>0.4.4</tag>
     </scm>
     <properties>
-        <titan.compatible.versions>0.4.0,0.4.1</titan.compatible.versions>
+        <titan.compatible.versions>0.4.0,0.4.1,0.4.2,0.4.3</titan.compatible.versions>
         <tinkerpop.version>2.4.0</tinkerpop.version>
         <junit.version>4.11</junit.version>
         <cassandra.version>1.2.2</cassandra.version>
-        <metrics.version>3.0.0-BETA3</metrics.version>
         <metrics2.version>2.1.2</metrics2.version>
-        <metrics3.version>3.0.0-BETA3</metrics3.version>
+        <metrics3.version>3.0.1</metrics3.version>
         <slf4j.version>1.7.5</slf4j.version>
         <jackson1.version>1.9.2</jackson1.version>
         <jackson2.version>2.1.2</jackson2.version>
@@ -218,6 +217,10 @@
                     </executions>
                 </plugin>
                 <plugin>
+                    <artifactId>maven-scm-plugin</artifactId>
+                    <version>1.9</version>
+                </plugin>
+                <plugin>
                     <artifactId>maven-deploy-plugin</artifactId>
                     <version>2.7</version>
                 </plugin>
@@ -231,7 +234,14 @@
                 </plugin>
                 <plugin>
                     <artifactId>maven-release-plugin</artifactId>
-                    <version>2.4.1</version>
+                    <version>2.5</version>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.apache.maven.scm</groupId>
+                            <artifactId>maven-scm-provider-gitexe</artifactId>
+                            <version>1.9</version>
+                        </dependency>
+                    </dependencies>
                 </plugin>
                 <plugin>
                     <artifactId>maven-javadoc-plugin</artifactId>
@@ -802,6 +812,9 @@
                                 <configuration>
                                     <useAgent>true</useAgent>
                                     <skip>${gpg.skip}</skip>
+                                    <excludes>
+                                        <exclude>*.asc</exclude>
+                                    </excludes>
                                 </configuration>
                             </execution>
                         </executions>
