@@ -663,13 +663,13 @@ public abstract class IndexProviderTest {
      ==================================================================================*/
 
 
-    private void initialize(String store) throws BackendException {
+    protected void initialize(String store) throws BackendException {
         for (Map.Entry<String,KeyInformation> info : allKeys.entrySet()) {
             if (index.supports(info.getValue())) index.register(store,info.getKey(),info.getValue(),tx);
         }
     }
 
-    private void add(String store, String docid, Map<String, Object> doc, boolean isNew) {
+    protected void add(String store, String docid, Map<String, Object> doc, boolean isNew) {
         for (Map.Entry<String, Object> kv : doc.entrySet()) {
             if (index.supports(allKeys.get(kv.getKey()))) {
                 tx.add(store, docid, kv.getKey(), kv.getValue(), isNew);
