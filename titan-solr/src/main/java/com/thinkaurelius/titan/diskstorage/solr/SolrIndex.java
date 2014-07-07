@@ -34,6 +34,7 @@ import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.proto.DeleteRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,6 +47,8 @@ import static com.thinkaurelius.titan.graphdb.configuration.GraphDatabaseConfigu
  * @author Jared Holmberg (jholmberg@bericotechnoLogies.com)
  */
 public class SolrIndex implements IndexProvider {
+
+    private static final Logger log = LoggerFactory.getLogger(SolrIndex.class);
 
     public static final ConfigOption<Integer> MAX_RESULT_SET_SIZE = new ConfigOption<Integer>(INDEX_NS,"max-result-set-size",
             "Maxium number of results to return if no limit is specified",
@@ -239,7 +242,9 @@ public class SolrIndex implements IndexProvider {
                     //Handle any deletions
                     if (mutation.hasDeletions()) {
                         if (mutation.isDeleted()) {
-                            Log.trace("Deleting entire document {}", docId);
+                            if (log.isTraceEnabled()) {
+                                Log.trace("Deleting entire document {}", docId);
+                            }
                             deleteIds.add(docId);
                         } else {
                             HashSet<IndexEntry> fieldDeletions = Sets.newHashSet(mutation.getDeletions());
@@ -297,6 +302,60 @@ public class SolrIndex implements IndexProvider {
                     commitDocumentChanges(updateDocuments, isLastBatch);
                 }
             }
+        } catch (Exception e) {
+            throw storageException(e);
+        }
+    }
+
+    public void restore(Map<String,Map<String, List<IndexEntry>>> documents, KeyInformation.IndexRetriever informations, BaseTransaction tx) throws StorageException {
+
+        try {
+            List<String> deleteIds = new ArrayList<String>();
+            Collection<SolrInputDocument> newDocuments = new ArrayList<SolrInputDocument>();
+            boolean isLastBatch = false;
+
+            for (Map.Entry<String, Map<String, List<IndexEntry>>> stores : documents.entrySet()) {
+                String coreName = stores.getKey();
+                String keyIdField = keyFieldIds.get(coreName);
+                int numProcessed = 0;
+
+                for (Map.Entry<String, List<IndexEntry>> entry : stores.getValue().entrySet()) {
+                    String docId = entry.getKey();
+                    List<IndexEntry> content = entry.getValue();
+
+                    if (content == null || content.size() == 0) {
+                        // delete
+                        if (log.isTraceEnabled()) {
+                            log.trace("Deleting entire document {}", docId);
+                        }
+                        deleteIds.add(docId);
+                    } else {
+                        if (log.isTraceEnabled()) {
+                            log.trace("Adding entire document {}", docId);
+                        }
+
+                        SolrInputDocument newDoc = new SolrInputDocument();
+                        newDoc.addField(keyIdField, docId);
+                        for (IndexEntry ie : content) {
+                            Object fieldValue = ie.value;
+                            if (fieldValue instanceof Geoshape) {
+                                fieldValue = GeoToWktConverter.convertToWktString((Geoshape) fieldValue);
+                            }
+                            newDoc.addField(ie.field, fieldValue);
+                        }
+                        newDocuments.add(newDoc);
+                    }
+
+                    numProcessed++;
+                    if (numProcessed == stores.getValue().size()) {
+                        isLastBatch = true;
+                    }
+
+                    commitDeletes(deleteIds, isLastBatch);
+                    commitDocumentChanges(newDocuments, isLastBatch);
+                }
+            }
+
         } catch (Exception e) {
             throw storageException(e);
         }
