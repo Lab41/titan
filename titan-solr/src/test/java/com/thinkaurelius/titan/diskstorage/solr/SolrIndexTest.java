@@ -4,7 +4,7 @@ import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableSet;
 import com.thinkaurelius.titan.core.attribute.Geo;
 import com.thinkaurelius.titan.core.attribute.Geoshape;
-import com.thinkaurelius.titan.diskstorage.StorageException;
+import com.thinkaurelius.titan.diskstorage.BackendException;
 import com.thinkaurelius.titan.diskstorage.configuration.Configuration;
 import com.thinkaurelius.titan.diskstorage.configuration.ModifiableConfiguration;
 import com.thinkaurelius.titan.diskstorage.indexing.IndexProvider;
@@ -50,7 +50,7 @@ public class SolrIndexTest extends IndexProviderTest {
     }
 
     @Override
-    public IndexProvider openIndex() throws StorageException {
+    public IndexProvider openIndex() throws BackendException {
         return new SolrIndex(getLocalSolrTestConfig());
     }
 
@@ -76,7 +76,7 @@ public class SolrIndexTest extends IndexProviderTest {
     }
 
     @Test
-    public void storeWithBoundingBoxGeospatialSearch() throws StorageException
+    public void storeWithBoundingBoxGeospatialSearch() throws BackendException
     {
         String[] stores = new String[] { "vertex" };
 

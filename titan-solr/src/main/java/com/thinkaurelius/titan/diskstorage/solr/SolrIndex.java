@@ -160,7 +160,7 @@ public class SolrIndex implements IndexProvider {
      *  </p>
      * @param config Titan configuration passed in at start up time
      */
-    public SolrIndex(Configuration config) throws StorageException {
+    public SolrIndex(Configuration config) throws BackendException {
         try {
             String zookeeperUrl = config.get(SolrIndex.ZOOKEEPER_URL);
             String collectionName = config.get(GraphDatabaseConfiguration.INDEX_NAME);
@@ -172,13 +172,13 @@ public class SolrIndex implements IndexProvider {
 
             waitForRecoveriesToFinish(solrServer, collectionName);
         } catch (IOException e) {
-            throw new PermanentStorageException(e);
+            throw new PermanentBackendException(e);
         } catch (SolrServerException e) {
-            throw new PermanentStorageException(e);
+            throw new PermanentBackendException(e);
         } catch (InterruptedException e) {
-            throw new PermanentStorageException(e);
+            throw new PermanentBackendException(e);
         } catch (KeeperException e) {
-            throw new PermanentStorageException(e);
+            throw new PermanentBackendException(e);
         }
 
         keyFieldIds = parseKeyFieldsForCores(config);
@@ -187,13 +187,13 @@ public class SolrIndex implements IndexProvider {
         maxResultSetSize = config.get(MAX_RESULT_SET_SIZE);
     }
 
-    private Map<String, String> parseKeyFieldsForCores(Configuration config) throws StorageException {
+    private Map<String, String> parseKeyFieldsForCores(Configuration config) throws BackendException {
         Map<String, String> keyFieldNames = new HashMap<String, String>();
         String[] coreFieldStatements = config.get(KEY_FIELD_NAMES);
         for (String coreFieldStatement : coreFieldStatements) {
             String[] parts = coreFieldStatement.trim().split("=");
             if (parts.length != 2) {
-                throw new PermanentStorageException("Unable to parse the core name / key field name pair. It should be of the format core=field");
+                throw new PermanentBackendException("Unable to parse the core name / key field name pair. It should be of the format core=field");
             }
             String coreName = parts[0];
             String keyFieldName = parts[1];
@@ -211,15 +211,15 @@ public class SolrIndex implements IndexProvider {
      * @param key New key to register
      * @param information Datatype to register for the key
      * @param tx enclosing transaction
-     * @throws StorageException
+     * @throws BackendException
      */
     @Override
-    public void register(String store, String key, KeyInformation information, BaseTransaction tx) throws StorageException {
+    public void register(String store, String key, KeyInformation information, BaseTransaction tx) throws BackendException {
         //Since all data types must be defined in the schema.xml, pre-registering a type does not work
     }
 
     @Override
-    public void mutate(Map<String, Map<String, IndexMutation>> mutations, KeyInformation.IndexRetriever informations, BaseTransaction tx) throws StorageException {
+    public void mutate(Map<String, Map<String, IndexMutation>> mutations, KeyInformation.IndexRetriever informations, BaseTransaction tx) throws BackendException {
         //TODO: research usage of the informations parameter
         try {
             List<String> deleteIds = new ArrayList<String>();
@@ -303,11 +303,11 @@ public class SolrIndex implements IndexProvider {
                 }
             }
         } catch (Exception e) {
-            throw storageException(e);
+            throw convert(e);
         }
     }
 
-    public void restore(Map<String,Map<String, List<IndexEntry>>> documents, KeyInformation.IndexRetriever informations, BaseTransaction tx) throws StorageException {
+    public void restore(Map<String,Map<String, List<IndexEntry>>> documents, KeyInformation.IndexRetriever informations, BaseTransaction tx) throws BackendException {
 
         try {
             List<String> deleteIds = new ArrayList<String>();
@@ -357,7 +357,7 @@ public class SolrIndex implements IndexProvider {
             }
 
         } catch (Exception e) {
-            throw storageException(e);
+            throw convert(e);
         }
     }
 
@@ -418,7 +418,7 @@ public class SolrIndex implements IndexProvider {
     }
 
     @Override
-    public List<String> query(IndexQuery query, KeyInformation.IndexRetriever informations, BaseTransaction tx) throws StorageException {
+    public List<String> query(IndexQuery query, KeyInformation.IndexRetriever informations, BaseTransaction tx) throws BackendException {
         List<String> result;
         String core = query.getStore();
         String keyIdField = keyFieldIds.get(core);
@@ -453,16 +453,16 @@ public class SolrIndex implements IndexProvider {
 
         } catch (HttpSolrServer.RemoteSolrException e) {
             Log.error("Query did not complete because parameters were not recognized : ", e);
-            throw new PermanentStorageException(e);
+            throw new PermanentBackendException(e);
         } catch (SolrServerException e) {
             Log.error("Unable to query Solr index.", e);
-            throw new PermanentStorageException(e);
+            throw new PermanentBackendException(e);
         }
         return result;
     }
 
     @Override
-    public Iterable<RawQuery.Result<String>> query(RawQuery query, KeyInformation.IndexRetriever informations, BaseTransaction tx) throws StorageException {
+    public Iterable<RawQuery.Result<String>> query(RawQuery query, KeyInformation.IndexRetriever informations, BaseTransaction tx) throws BackendException {
         List<RawQuery.Result<String>> result;
         String core = query.getStore();
         String keyIdField = keyFieldIds.get(core);
@@ -494,10 +494,10 @@ public class SolrIndex implements IndexProvider {
             }
         } catch (HttpSolrServer.RemoteSolrException e) {
             Log.error("Query did not complete because parameters were not recognized : ", e);
-            throw new PermanentStorageException(e);
+            throw new PermanentBackendException(e);
         } catch (SolrServerException e) {
             Log.error("Unable to query Solr index.", e);
-            throw new PermanentStorageException(e);
+            throw new PermanentBackendException(e);
         }
         return result;
     }
@@ -655,35 +655,35 @@ public class SolrIndex implements IndexProvider {
      * race conditions.
      *
      * @return New Transaction Handle
-     * @throws StorageException
+     * @throws BackendException
      */
     @Override
-    public BaseTransactionConfigurable beginTransaction(BaseTransactionConfig config) throws StorageException {
+    public BaseTransactionConfigurable beginTransaction(BaseTransactionConfig config) throws BackendException {
         return new DefaultTransaction(config);
     }
 
     @Override
-    public void close() throws StorageException {
+    public void close() throws BackendException {
         Log.trace("Shutting down connection to Solr", solrServer);
         solrServer.shutdown();
         solrServer = null;
     }
 
     @Override
-    public void clearStorage() throws StorageException {
+    public void clearStorage() throws BackendException {
         try {
             Log.trace("Clearing storage from Solr", solrServer);
             solrServer.deleteByQuery("*:*");
             solrServer.commit();
         } catch (SolrServerException e) {
             Log.error("Unable to clear storage from index due to server error on Solr.", e);
-            throw new PermanentStorageException(e);
+            throw new PermanentBackendException(e);
         } catch (IOException e) {
             Log.error("Unable to clear storage from index due to low-level I/O error.", e);
-            throw new PermanentStorageException(e);
+            throw new PermanentBackendException(e);
         } catch (Exception e) {
             Log.error("Unable to clear storage from index due to general error.", e);
-            throw new PermanentStorageException(e);
+            throw new PermanentBackendException(e);
         }
     }
 
@@ -718,8 +718,12 @@ public class SolrIndex implements IndexProvider {
         return false;
     }
 
-    private StorageException storageException(Exception solrException) {
-        return new TemporaryStorageException("Unable to complete query on Solr.", solrException);
+    private BackendException convert(Exception solrException) {
+        if (solrException instanceof InterruptedException) {
+            return new TemporaryBackendException("Interrupted while waiting for response", solrException);
+        } else {
+            return new PermanentBackendException("Unknown exception while executing index operation", solrException);
+        }
     }
 
     private static void createCollectionIfNotExists(CloudSolrServer server, Configuration config)
