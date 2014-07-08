@@ -44,8 +44,6 @@ public class SolrIndexTest extends IndexProviderTest {
 
     @AfterClass
     public static void tearDownMiniCluster() throws Exception {
-        System.clearProperty("solr.solrxml.location");
-        System.clearProperty("zkHost");
         miniSolrCloudCluster.shutdown();
     }
 
