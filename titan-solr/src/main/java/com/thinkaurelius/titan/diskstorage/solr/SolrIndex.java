@@ -34,6 +34,7 @@ import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.cloud.ZkStateReader;
+import org.apache.solr.common.params.CommonParams;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.proto.DeleteRequest;
 import org.slf4j.Logger;
@@ -649,9 +650,10 @@ public class SolrIndex implements IndexProvider {
                 Geoshape geo = (Geoshape)value;
                 if (geo.getType() == Geoshape.Type.CIRCLE) {
                     Geoshape.Point center = geo.getPoint();
-                    q.addFilterQuery("{!geofilt sfield=" + key +
-                            " pt=" + center.getLatitude() + "," + center.getLongitude() +
-                            " d=" + geo.getRadius() + "} distErrPct=0"); //distance in kilometers
+                    q.addFilterQuery("{!geofilt sfield=" + key + "}");
+                    q.add("pt", center.getLatitude() + "," + center.getLongitude());
+                    q.add("d", Float.toString(geo.getRadius()));
+                    q.add("distErrPct=0"); //distance in kilometers
                     return q;
                 } else if (geo.getType() == Geoshape.Type.BOX) {
                     Geoshape.Point southwest = geo.getPoint(0);
@@ -686,12 +688,15 @@ public class SolrIndex implements IndexProvider {
             for (Condition<TitanElement> c : condition.getChildren()) {
                 SolrQuery andCondition = new SolrQuery();
                 andCondition.setQuery("*:*");
-                andCondition =  buildQuery(andCondition, c);
-                String[] andFilterConditions = andCondition.getFilterQueries();
-                for (String filter : andFilterConditions) {
-                    //+ in solr makes the condition required
-                    q.addFilterQuery("+" + filter);
+                andCondition = buildQuery(andCondition, c);
+
+                // '+' in solr makes the condition required, so we need to add that to all the 'fq' parameters.
+                for (String filter : andCondition.getFilterQueries()) {
+                    andCondition.removeFilterQuery(filter);
+                    andCondition.addFilterQuery("+" + filter);
                 }
+
+                q.add(andCondition);
             }
             return q;
         } else {
