@@ -13,6 +13,14 @@ public class SolrField {
         this.fieldType = fieldType;
     }
 
+    public String getFieldName() {
+        return fieldName;
+    }
+
+    public String getFieldType() {
+        return fieldType;
+    }
+
     public JSONObject getJSON() throws JSONException {
         JSONObject object = new JSONObject();
         object.put("name",fieldName);

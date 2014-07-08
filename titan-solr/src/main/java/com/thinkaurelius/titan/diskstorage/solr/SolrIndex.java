@@ -267,10 +267,14 @@ public class SolrIndex implements IndexProvider {
                 throw new PermanentBackendException("unsupported type: " + dataType);
             }
 
-            fields.add(new SolrField(key, fieldType));
+            SolrField solrField = new SolrField(key, fieldType);
 
-            req.add(fields);
-            req.process(solrServer);
+            if (!checkIfFieldExists(solrField)) {
+                fields.add(solrField);
+
+                req.add(fields);
+                req.process(solrServer);
+            }
         } catch (Exception e) {
             throw convert(e);
         }
@@ -868,5 +872,17 @@ public class SolrIndex implements IndexProvider {
         } finally {
             Log.info("Exiting solr wait");
         }
+    }
+
+    private boolean checkIfFieldExists(SolrField field) throws IOException, SolrServerException {
+        FieldExistsRequest req = new FieldExistsRequest();
+        FieldExistsResponse rep = req.process(solrServer);
+
+        for (SolrField f : rep.getFields()) {
+            if (field.getFieldName().equals(f.getFieldName())) {
+                return true;
+            }
+        }
+        return false;
     }
 }
