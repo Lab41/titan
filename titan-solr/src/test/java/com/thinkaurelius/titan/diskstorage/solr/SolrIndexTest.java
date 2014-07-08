@@ -15,9 +15,11 @@ import com.thinkaurelius.titan.graphdb.query.condition.PredicateCondition;
 import org.apache.solr.cloud.MiniSolrCloudCluster;
 import org.apache.solr.cloud.ZkController;
 import org.apache.solr.servlet.SolrDispatchFilter;
+import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.restlet.ext.servlet.ServerServlet;
 
 import java.io.File;
 import java.util.*;
@@ -29,8 +31,8 @@ import static org.junit.Assert.assertEquals;
  */
 public class SolrIndexTest extends IndexProviderTest {
 
-    protected static final int NUM_SERVERS = 5;
-    protected static final String CONF_DIR_IN_ZK = "conf1";
+    protected static final int NUM_SERVERS = 1;
+    protected static final String CONFIG_DIR = "conf1";
 
     private static MiniSolrCloudCluster miniSolrCloudCluster;
 
@@ -38,8 +40,16 @@ public class SolrIndexTest extends IndexProviderTest {
     public static void setUpMiniCluster() throws Exception {
         String solrHome = Joiner.on(File.separator).join(System.getProperty("user.dir"), "titan-solr", "target", "test-classes", "solr");
         File solrXml = new File(solrHome, "solr.xml");
-        miniSolrCloudCluster = new MiniSolrCloudCluster(NUM_SERVERS, null, solrXml, null, null);
-        uploadConfigDirToZk(Joiner.on(File.separator).join(solrHome, "store1"));
+
+        // Enable the schema api.
+        ServletHolder servletHolder = new ServletHolder("SolrRestApi", ServerServlet.class);
+        servletHolder.setInitParameter("org.restlet.application", "org.apache.solr.rest.SolrSchemaRestApi");
+
+        SortedMap<ServletHolder, String> extraServlets = new TreeMap<ServletHolder, String>();
+        extraServlets.put(servletHolder, "/schema/*");
+
+        miniSolrCloudCluster = new MiniSolrCloudCluster(NUM_SERVERS, null, solrXml, extraServlets, null);
+        uploadConfigDirToZk(Joiner.on(File.separator).join(solrHome, "collection1", "conf"));
     }
 
     @AfterClass
@@ -63,12 +73,17 @@ public class SolrIndexTest extends IndexProviderTest {
 
         config.set(SolrIndex.ZOOKEEPER_URL, miniSolrCloudCluster.getZkServer().getZkAddress(), index);
         config.set(SolrIndex.KEY_FIELD_NAMES, new String[]{
-                "edge=document_id",
-                "restorable1=document_id",
-                "restorable2=document_id",
-                "store1=document_id",
-                "vertex=document_id"
+                "collection1=id",
+                "edge=id",
+                "restorable1=id",
+                "restorable2=id",
+                "store1=id",
+                "vertex=id"
         }, index);
+        config.set(SolrIndex.CONFIG_NAME, CONFIG_DIR, index);
+        config.set(SolrIndex.NUM_SHARDS, 1, index);
+        config.set(SolrIndex.MAX_SHARDS_PER_NODE, 1, index);
+        config.set(SolrIndex.REPLICATION_FACTOR, 1, index);
 
         return config.restrictTo(index);
     }
@@ -108,6 +123,6 @@ public class SolrIndexTest extends IndexProviderTest {
 
     protected static void uploadConfigDirToZk(String collectionConfigDir) throws Exception {
         ZkController zkController = getZkController();
-        zkController.uploadConfigDir(new File(collectionConfigDir), CONF_DIR_IN_ZK);
+        zkController.uploadConfigDir(new File(collectionConfigDir), CONFIG_DIR);
     }
 }

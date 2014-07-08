@@ -6,6 +6,7 @@ import com.google.common.collect.Sets;
 import com.thinkaurelius.titan.core.Order;
 import com.thinkaurelius.titan.core.TitanElement;
 import com.thinkaurelius.titan.core.attribute.*;
+import com.thinkaurelius.titan.core.schema.Mapping;
 import com.thinkaurelius.titan.diskstorage.*;
 import com.thinkaurelius.titan.diskstorage.configuration.ConfigOption;
 import com.thinkaurelius.titan.diskstorage.configuration.Configuration;
@@ -49,6 +50,10 @@ import static com.thinkaurelius.titan.graphdb.configuration.GraphDatabaseConfigu
 public class SolrIndex implements IndexProvider {
 
     private static final Logger log = LoggerFactory.getLogger(SolrIndex.class);
+
+    public static final ConfigOption<String> CONFIG_NAME = new ConfigOption<String>(INDEX_NS,"config-name",
+            "Name of the config",
+            ConfigOption.Type.GLOBAL_OFFLINE, "conf1");
 
     public static final ConfigOption<Integer> MAX_RESULT_SET_SIZE = new ConfigOption<Integer>(INDEX_NS,"max-result-set-size",
             "Maxium number of results to return if no limit is specified",
@@ -216,6 +221,59 @@ public class SolrIndex implements IndexProvider {
     @Override
     public void register(String store, String key, KeyInformation information, BaseTransaction tx) throws BackendException {
         //Since all data types must be defined in the schema.xml, pre-registering a type does not work
+
+        CreateFieldRequest req = new CreateFieldRequest();
+        List<SolrField> fields = new ArrayList<SolrField>();
+
+        Class<?> dataType = information.getDataType();
+        Mapping map = Mapping.getMapping(information);
+
+        try {
+            String fieldType;
+
+            if (AttributeUtil.isString(dataType)) {
+                log.debug("Registering string type for {}", key);
+                if (map == Mapping.STRING) {
+                    fieldType = "string";
+                } else {
+                    fieldType = "text_general";
+                }
+            } else if (dataType == Float.class) {
+                log.debug("Registering float type for {}", key);
+                fieldType = "float";
+            } else if (dataType == Double.class || dataType == Decimal.class || dataType == Precision.class) {
+                fieldType = "double";
+            } else if (dataType == Byte.class) {
+                log.debug("Registering int type for {}", key);
+                fieldType = "int";
+                //fieldType = "byte";
+            } else if (dataType == Short.class) {
+                log.debug("Registering int type for {}", key);
+                fieldType = "int";
+                //fieldType = "short";
+            } else if (dataType == Integer.class) {
+                log.debug("Registering int type for {}", key);
+                fieldType = "int";
+            } else if (dataType == Long.class) {
+                log.debug("Registering long type for {}", key);
+                fieldType = "long";
+            } else if (dataType == Boolean.class) {
+                log.debug("Registering boolean type for {}", key);
+                fieldType = "boolean";
+            } else if (dataType == Geoshape.class) {
+                log.debug("Registering location type for {}", key);
+                fieldType = "location_rpt";
+            } else {
+                throw new PermanentBackendException("unsupported type: " + dataType);
+            }
+
+            fields.add(new SolrField(key, fieldType));
+
+            req.add(fields);
+            req.process(solrServer);
+        } catch (Exception e) {
+            throw convert(e);
+        }
     }
 
     @Override
@@ -734,6 +792,7 @@ public class SolrIndex implements IndexProvider {
             Integer numShards = config.get(NUM_SHARDS);
             Integer maxShardsPerNode = config.get(MAX_SHARDS_PER_NODE);
             Integer replicationFactor = config.get(REPLICATION_FACTOR);
+            String configName = config.get(CONFIG_NAME);
 
             CollectionAdminRequest.Create createRequest = new CollectionAdminRequest.Create();
 
@@ -741,6 +800,7 @@ public class SolrIndex implements IndexProvider {
             createRequest.setNumShards(numShards);
             createRequest.setMaxShardsPerNode(maxShardsPerNode);
             createRequest.setReplicationFactor(replicationFactor);
+            createRequest.setConfigName(configName);
 
             CollectionAdminResponse createResponse = createRequest.process(server);
             if (createResponse.isSuccess()) {
