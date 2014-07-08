@@ -574,6 +574,14 @@ public class SolrIndex implements IndexProvider {
 
                 Preconditions.checkArgument(titanPredicate instanceof Cmp, "Relation not supported on numeric types: " + titanPredicate);
                 Cmp numRel = (Cmp) titanPredicate;
+
+                String valueString = value.toString();
+
+                // '-' is a special character and must be escaped.
+                if (valueString.startsWith("-")) {
+                    valueString = "\\" + valueString;
+                }
+
                 //if (numRel == Cmp.INTERVAL) {
                 //    Interval i = (Interval)value;
                 //    q.addFilterQuery(key + ":[" + i.getStart() + " TO " + i.getEnd() + "]");
@@ -581,24 +589,24 @@ public class SolrIndex implements IndexProvider {
                 //} else {
                     switch (numRel) {
                         case EQUAL:
-                            q.addFilterQuery(key + ":" + value.toString());
+                            q.addFilterQuery(key + ":" + valueString);
                             return q;
                         case NOT_EQUAL:
-                            q.addFilterQuery("-" + key + ":" + value.toString());
+                            q.addFilterQuery("-" + key + ":" + valueString);
                             return q;
                         case LESS_THAN:
                             //use right curly to mean up to but not including value
-                            q.addFilterQuery(key + ":[* TO " + value.toString() + "}");
+                            q.addFilterQuery(key + ":[* TO " + valueString + "}");
                             return q;
                         case LESS_THAN_EQUAL:
-                            q.addFilterQuery(key + ":[* TO " + value.toString() + "]");
+                            q.addFilterQuery(key + ":[* TO " + valueString + "]");
                             return q;
                         case GREATER_THAN:
                             //use left curly to mean greater than but not including value
-                            q.addFilterQuery(key + ":{" + value.toString() + " TO *]");
+                            q.addFilterQuery(key + ":{" + valueString + " TO *]");
                             return q;
                         case GREATER_THAN_EQUAL:
-                            q.addFilterQuery(key + ":[" + value.toString() + " TO *]");
+                            q.addFilterQuery(key + ":[" + valueString + " TO *]");
                             return q;
                         default: throw new IllegalArgumentException("Unexpected relation: " + numRel);
                     }
